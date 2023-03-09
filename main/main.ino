@@ -1,14 +1,14 @@
 uint8_t da=0<<3; // device address
 
 typedef struct pack{
-  uint8_t f, a, l; // flags, address, length
+  uint8_t f, a, l, ds; // flags, address, length
   int16_t di; // data index
   unsigned long time;
   uint8_t d[64]; // data
 } pack;
 
 typedef struct ifst{
-  uint8_t ia, trp, rep, synci, ds; // interface address, transmit pin, receive pin
+  uint8_t ia, trp, rep, synci; // interface address, transmit pin, receive pin
   unsigned long sync[6]; unsigned long syncavrg;
   pack pr; // packet receive
   pack pt; // packet transmit
@@ -16,36 +16,39 @@ typedef struct ifst{
 
 ifst ifs[7]={{0}};
 
+#define BITL 1000
+
+#define PER 1000
 
 int initif(uint8_t in, uint8_t trp, uint8_t rep){
 
-if(in<1 || in>7) return 1;
+  if(in<1 || in>7) return 1;
 
-if(trp<2 || rep<2 || trp>19 || rep>19) return 1;
+  if(trp<2 || rep<2 || trp>19 || rep>19) return 1;
 
-for(int i=0;i<7;i++){
-  if(ifs[i].trp==trp || ifs[i].rep==rep || ifs[i].trp==rep || ifs[i].rep==trp) return 1;
-}
+  for(int i=0;i<7;i++){
+    if(ifs[i].trp==trp || ifs[i].rep==rep || ifs[i].trp==rep || ifs[i].rep==trp) return 1;
+  }
 
-ifs[in-1].ia=da|in;
-ifs[in-1].trp=trp;
-ifs[in-1].rep=rep;
+  ifs[in-1].ia=da|in;
+  ifs[in-1].trp=trp;
+  ifs[in-1].rep=rep;
 
-pinMode(trp, OUTPUT);
-pinMode(rep, INPUT);
+  pinMode(trp, OUTPUT);
+  pinMode(rep, INPUT);
 
-if(rep<=7){
-  PCICR|=1<<2;
-  PCMSK2|=1<<rep;
-}else if(rep<=13){
-  PCICR|=1<<0;
-  PCMSK0|=1<<(rep-8);
-}else{
-  PCICR|=1<<1;
-  PCMSK1|=1<<(rep-14);
-}
+  if(rep<=7){
+    PCICR|=1<<2;
+    PCMSK2|=1<<rep;
+  }else if(rep<=13){
+    PCICR|=1<<0;
+    PCMSK0|=1<<(rep-8);
+  }else{
+    PCICR|=1<<1;
+    PCMSK1|=1<<(rep-14);
+  }
 
-return 0;
+  return 0;
 }
 
 volatile uint8_t ios0, ios1, ios2; // interrupt old state
@@ -63,6 +66,7 @@ ISR(PCINT0_vect){
             ifs[j].synci=0;
             ifs[j].syncavrg=(ifs[j].sync[1]+ifs[j].sync[2]+ifs[j].sync[3]+ifs[j].sync[4]+ifs[j].sync[5])/5;
             PCMSK0&=~(uint8_t)(1<<i);
+            break;
           }else if(ifs[j].synci==0){
             ifs[j].sync[ifs[j].synci]=micros();
           }else{
@@ -87,7 +91,8 @@ ISR(PCINT1_vect){
         if(ifs[j].synci>5){
           ifs[j].synci=0;
           ifs[j].syncavrg=(ifs[j].sync[1]+ifs[j].sync[2]+ifs[j].sync[3]+ifs[j].sync[4]+ifs[j].sync[5])/5;
-          PCMSK0&=~(uint8_t)(1<<i);
+          PCMSK1&=~(uint8_t)(1<<i);
+          break;
         }else if(ifs[j].synci==0){
           ifs[j].sync[ifs[j].synci]=micros();
         }else{
@@ -103,22 +108,42 @@ ISR(PCINT1_vect){
 ISR(PCINT2_vect){
   ics2=(ios2^(PIND&PCMSK2))&PIND;
   ios2=(PIND&PCMSK2);
-
   for(int i=0;i<8;i++){
-    if((ics0>>i)&1){
-      for(int j=0;j<8;j++){
-        if(ifs[j].rep==i){
+    //Serial.print("pin "); Serial.println(i);
+   // Serial.print("pin on IF1 "); Serial.println(ifs[0].rep);
 
-        if(ifs[j].synci>5){
+    if((ics2>>i)&1){
+     // Serial.print("updated pin "); Serial.println(i);
+      
+      for(int j=0;j<1;j++){
+        if(ifs[j].rep==i){
+          //Serial.print(" pin matched "); Serial.print(i);Serial.print(" ");Serial.println(ifs[j].synci);
+         if(ifs[j].synci>=5){
           ifs[j].synci=0;
-          ifs[j].syncavrg=(ifs[j].sync[1]+ifs[j].sync[2]+ifs[j].sync[3]+ifs[j].sync[4]+ifs[j].sync[5])/5;
-          PCMSK0&=~(uint8_t)(1<<i);
-        }else if(ifs[j].synci==0){
-          ifs[j].sync[ifs[j].synci]=micros();
-        }else{
-          ifs[j].sync[ifs[j].synci]=micros()-ifs[j].sync[ifs[j].synci-1];
-        }
-        ifs[j].synci++;
+          PCMSK2&=~(uint8_t)(1<<i);
+                  ifs[j].pr.ds=1;
+
+                      Serial.print("  end sync ");Serial.println("ne be majka ti majka tiiii");
+
+
+          break;
+        // }else if(ifs[j].synci>=5){
+        //                         ifs[j].pr.ds=1;
+
+        //     //ifs[j].synci=0;
+        //     //ifs[j].syncavrg=(ifs[j].sync[5]-ifs[j].sync[0])/5;
+        //     //ifs[j].syncavrg=(ifs[j].sync[4]-ifs[j].sync[3]);
+        //     ifs[j].syncavrg=BITL;
+        //    // PCMSK2&=~(uint8_t)(1<<i);
+        //     //Serial.print("  end sync ");Serial.println(ifs[j].syncavrg);
+        //     break;
+         }
+          // }else{
+          //   //ifs[j].sync[ifs[j].synci]=micros()-ifs[j].sync[ifs[j].synci-1];
+          //   ifs[j].sync[ifs[j].synci]=micros();
+          //   //Serial.println("  consecutive pulse");Serial.println(ifs[j].sync[ifs[j].synci]);
+          // }
+          ifs[j].synci++;
         }
       }
     }
@@ -126,19 +151,14 @@ ISR(PCINT2_vect){
 }
 void setup(){
   initif(1, 2, 3);
-  initif(2, 6, 7);
+  //initif(2, 6, 7);
   Serial.begin(9600);
 }
 
-#define BITL 1000
-
-#define PER 1000
-
 void loop(){
   static unsigned long perc=0;
-  
-  for(int i=0; i<2; i++){
-    if(ifs[i].ds){
+  for(int i=0; i<1; i++){
+    if(ifs[i].pt.ds){
       if(micros()-ifs[i].pt.time>=(BITL/2)){
         ifs[i].pt.time=micros();
         if(ifs[i].pt.di<0){
@@ -147,32 +167,85 @@ void loop(){
         else if(ifs[i].pt.di/2<8){
           //Serial.println(ifs[i].pt.di/2);
           digitalWrite(ifs[i].trp, (ifs[i].pt.f>>(7-(ifs[i].pt.di/2)))&1);
-          //Serial.println((ifs[i].pt.f>>(7-ifs[i].pt.di/2))&1);
         }
         else if(ifs[i].pt.di/2<16)
           digitalWrite(ifs[i].trp, (ifs[i].pt.a>>(15-ifs[i].pt.di/2))&1);
         else if(ifs[i].pt.di/2<24)
           digitalWrite(ifs[i].trp, (ifs[i].pt.l>>(23-ifs[i].pt.di/2))&1);
         else{
-          digitalWrite(ifs[i].trp, (ifs[i].pt.d[(ifs[i].pt.di/2)/8]>>(7-(ifs[i].pt.di/2)%8))&1);
-          if(!((ifs[i].pt.d[(ifs[i].pt.di/2)/8]>>(7-(ifs[i].pt.di/2)%8))&1)){
-            ifs[i].ds=0;
-            break;
-          }
+            digitalWrite(ifs[i].trp, (ifs[i].pt.d[((ifs[i].pt.di)/2-24)/8]>>(7-((ifs[i].pt.di)/2-24)%8))&1);
+            if(((ifs[i].pt.di)/2-24)%8==7 && (!ifs[i].pt.d[((ifs[i].pt.di)/2-24)/8])){
+              ifs[i].pt.ds=0;
+              break;
+            }
         }
         ifs[i].pt.di++;
       }
     }else{
         ifs[i].pt.f=0b01101101;
         ifs[i].pt.a=0b01010101;
-        ifs[i].pt.l=0b10000111;
-        ifs[i].pt.d[0]=0;
+        //ifs[i].pt.l=0b10000111;
+        ifs[i].pt.l=3;
+        ifs[i].pt.d[0]='L';ifs[i].pt.d[1]='e';ifs[i].pt.d[2]='l';ifs[i].pt.d[3]='\0';
         ifs[i].pt.di=-13;
     }
+  }
+  for(int i=0; i<1; i++){
+    if(ifs[i].pr.ds){
+     if(ifs[i].pr.di==-1){
+      ifs[i].pr.time=micros();
+      ifs[i].pr.di++;
+     }else if(micros()-ifs[i].pr.time>=BITL){
+      ifs[i].pr.time=micros();
+      //Serial.print("Device id: ");
+      //Serial.println(ifs[i].pr.di);
+        if(ifs[i].pr.di<8){
+          ifs[i].pr.f|=digitalRead(ifs[i].rep)<<(7-ifs[i].pr.di);
+        }
+        else if(ifs[i].pr.di<16)
+          ifs[i].pr.a|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
+        else if(ifs[i].pr.di<24)
+          ifs[i].pr.l|=digitalRead(ifs[i].rep)<<(23-ifs[i].pr.di);
+        else{
+          if(ifs[i].pr.di-24>=(ifs[i].pr.l+1)*8 || ifs[i].pr.di-24>=32*8){
+                      
+            if(ifs[i].rep<=7){
+              PCMSK2|=1<<ifs[i].rep;
+            }else if(ifs[i].rep<=13){
+              PCMSK0|=1<<(ifs[i].rep-8);
+            }else{
+              PCMSK1|=1<<(ifs[i].rep-14);
+            }
+            Serial.println(ifs[i].pr.di);
+                        Serial.println(ifs[i].pr.f);
+                                    Serial.println(ifs[i].pr.a);
+                                                Serial.println(ifs[i].pr.l);
+            ifs[i].pr.ds=0;
+            ifs[i].pr.di=-1;
+            Serial.println((char *)ifs[i].pr.d);
+                                                            Serial.println("___________________________________");
+
+            break;
+          }
+          ifs[i].pr.d[(ifs[i].pr.di-24)/8]|=digitalRead(ifs[i].rep)<<(7-(ifs[i].pr.di-24)%8);
+        }
+        ifs[i].pr.di++;
+     }
+    }else{
+      ifs[i].pr.di=-1;
+      ifs[i].pr.f=0;
+      ifs[i].pr.a=0;
+      ifs[i].pr.l=0;
+      ifs[i].pr.d[0]=0;
+    }
+    
+  }
+    for(int i=0; i<1; i++){
+
       if(millis()-perc>=1000){
       perc=millis();
       ifs[i].pt.time=micros();
-      ifs[i].ds=1;
+      ifs[i].pt.ds=1;
     }
-  }
+    }
 }
