@@ -108,25 +108,22 @@ ISR(PCINT1_vect){
 ISR(PCINT2_vect){
   ics2=(ios2^(PIND&PCMSK2))&PIND;
   ios2=(PIND&PCMSK2);
-  for(int i=0;i<8;i++){
+  for(int i=0;i<8;i++){ 
     //Serial.print("pin "); Serial.println(i);
    // Serial.print("pin on IF1 "); Serial.println(ifs[0].rep);
 
     if((ics2>>i)&1){
      // Serial.print("updated pin "); Serial.println(i);
       
-      for(int j=0;j<1;j++){
+     for(int j=0;j<1;j++){ 
         if(ifs[j].rep==i){
           //Serial.print(" pin matched "); Serial.print(i);Serial.print(" ");Serial.println(ifs[j].synci);
-         if(ifs[j].synci>=5){
+         if(ifs[j].synci>=6){
           ifs[j].synci=0;
           PCMSK2&=~(uint8_t)(1<<i);
-                  ifs[j].pr.ds=1;
-
-                      Serial.print("  end sync ");Serial.println("ne be majka ti majka tiiii");
-
-
-          break;
+          ifs[j].pr.ds=1;
+          Serial.print("  end sync ");Serial.println("ne be majka ti majka tiiii");
+         // break;
         // }else if(ifs[j].synci>=5){
         //                         ifs[j].pr.ds=1;
 
