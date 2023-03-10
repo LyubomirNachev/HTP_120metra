@@ -129,18 +129,10 @@ ISR(PCINT2_vect){
     }
   }
 }
-
-#define REED 11
-void setup(){
-  pinMode(REED, INPUT_PULLUP);
-  rt[0]=0b00001001;
-  initif(1, 2, 3);
-  //initif(2, 6, 7);
-  Serial.begin(9600);
 }
 
 void stoprcv(uint8_t i){
-                if(ifs[i].rep<=7){
+              if(ifs[i].rep<=7){
                 PCMSK2|=1<<ifs[i].rep;
               }else if(ifs[i].rep<=13){
                 PCMSK0|=1<<(ifs[i].rep-8);
@@ -149,6 +141,15 @@ void stoprcv(uint8_t i){
               }
               ifs[i].pr.ds=0;
               ifs[i].pr.di=-1;
+}
+
+#define REED 11
+void setup(){
+  pinMode(REED, INPUT_PULLUP);
+  rt[0]=0b00001001;
+  initif(1, 2, 3);
+  //initif(2, 6, 7);
+  Serial.begin(9600);
 }
 
 void loop(){
@@ -182,7 +183,7 @@ void loop(){
       }
     }else{
 
-        ifs[i].pt.f=0b00000001;
+        ifs[i].pt.f=0b00000100;
         ifs[i].pt.a=0b00001001;
         memcpy(ifs[i].pt.d, sensor, strlen(sensor)+1);
         ifs[i].pt.l=strlen(ifs[i].pt.d);
@@ -200,39 +201,7 @@ void loop(){
       //Serial.println(ifs[i].pr.di);
         if(ifs[i].pr.di<8){
           ifs[i].pr.f|=digitalRead(ifs[i].rep)<<(7-ifs[i].pr.di);
-        }else switch(ifs[i].pr.f){
-          case 1:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.a|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else{
-            stoprcv(i);
-            goto exit;
-          }
-          break;
-          case 2:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.l|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else{
-            if(ifs[i].pr.di-16>=(ifs[i].pr.l+1)*8 || ifs[i].pr.di-16>=32*8){
-              stoprcv(i);
-              goto exit;
-            }
-            ifs[i].pr.d[(ifs[i].pr.di-16)/8]|=digitalRead(ifs[i].rep)<<(7-(ifs[i].pr.di-16)%8);
-          }
-          break;
-          case 3:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.l|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else{
-            if(ifs[i].pr.di-16>=(ifs[i].pr.l+1)*8 || ifs[i].pr.di-16>=32*8){
-              stoprcv(i);
-              goto exit;
-            }
-            ifs[i].pr.d[(ifs[i].pr.di-16)/8]|=digitalRead(ifs[i].rep)<<(7-(ifs[i].pr.di-16)%8);
-          }
-          break;
-          case 4:
-          if(ifs[i].pr.di<16)
+        }else if(ifs[i].pr.di<16)
             ifs[i].pr.a|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
           else if(ifs[i].pr.di<24)
             ifs[i].pr.l|=digitalRead(ifs[i].rep)<<(23-ifs[i].pr.di);
@@ -255,65 +224,23 @@ void loop(){
               Serial.println((char *)ifs[i].pr.d);
               Serial.println("___________________________________");
 
-              goto exit;
+              break;
             }
             ifs[i].pr.d[(ifs[i].pr.di-24)/8]|=digitalRead(ifs[i].rep)<<(7-(ifs[i].pr.di-24)%8);
           }
-          break;
-          case 5:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.a|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else{
-            stoprcv(i);
-            goto exit;
-          }
-          break;
-          case 6:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.l|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else{
-            if(ifs[i].pr.di-16>=(ifs[i].pr.l+1)*8 || ifs[i].pr.di-16>=32*8){
-              stoprcv(i);
-              goto exit;
-            }
-            ifs[i].pr.d[(ifs[i].pr.di-16)/8]|=digitalRead(ifs[i].rep)<<(7-(ifs[i].pr.di-16)%8);
-          }
-          break;
 
-        }
         ifs[i].pr.di++;
      }
     }else{
-      switch(ifs[i].pr.f){
-        case 1:
-          Serial.println("Add Route to table");
-
-        break;
-        case 2:
-          Serial.println("Add it to your table and send the new route");
-        break;
-        case 3:
-          Serial.println("Remove the route and send the removed data to others")
-        break;
-        case 4:
-          Serial.println("Forward the data unless it's for me");
-        break;
-        case 5:
-          Serial.println("Syshto si ebi maikata");
-        break;
-        case 6:
-          Serial.println("Ebi si maikata");
-        break;
-      }
-
       ifs[i].pr.di=-1;
       ifs[i].pr.f=0;
       ifs[i].pr.a=0;
       ifs[i].pr.l=0;
       ifs[i].pr.d[0]=0;
     }
+    
   }
-  exit:
+  
     for(int i=0; i<1; i++){
       if(millis()-perc>=1000){
         perc=millis();

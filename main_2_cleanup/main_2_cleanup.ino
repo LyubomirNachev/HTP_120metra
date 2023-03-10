@@ -4,7 +4,7 @@ typedef struct pack{
   uint8_t f, a, l, ds; // flags, address, length
   int16_t di; // data index
   unsigned long time;
-  uint8_t d[64]; // data
+  uint8_t d[32]; // data
 } pack;
 
 typedef struct ifst{
@@ -15,6 +15,8 @@ typedef struct ifst{
 } ifst;
 
 ifst ifs[7]={{0}};
+
+uint8_t rt[32]={0};
 
 #define BITL 1000
 
@@ -118,24 +120,31 @@ ISR(PCINT2_vect){
      for(int j=0;j<1;j++){ 
         if(ifs[j].rep==i){
           //Serial.print(" pin matched "); Serial.print(i);Serial.print(" ");Serial.println(ifs[j].synci);
-         if(ifs[j].synci>=6){
-          ifs[j].synci=0;
-          PCMSK2&=~(uint8_t)(1<<i);
-          ifs[j].pr.ds=1;
-          Serial.print("  end sync ");Serial.println("ne be majka ti majka tiiii");
+          if(ifs[j].synci>=6){
+            ifs[j].synci=0;
+            PCMSK2&=~(uint8_t)(1<<i);
+            ifs[j].pr.ds=1;
+            //Serial.print("  end sync ");Serial.println("ne be majka ti majka tiiii");
+          }
           ifs[j].synci++;
         }
       }
     }
   }
 }
+#define REED 11
 void setup(){
+  pinMode(REED, INPUT_PULLUP);
+  rt[0]=0b00001001;
   initif(1, 2, 3);
   //initif(2, 6, 7);
   Serial.begin(9600);
 }
 
 void loop(){
+  //char sensor[2];sensor[0] = digitalRead(REED) + '0';sensor[1]='\0';
+  char *sensor="Data";
+
   static unsigned long perc=0;
   for(int i=0; i<1; i++){
     if(ifs[i].pt.ds){
@@ -162,11 +171,10 @@ void loop(){
         ifs[i].pt.di++;
       }
     }else{
-        ifs[i].pt.f=0b01101101;
-        ifs[i].pt.a=0b01010101;
-        //ifs[i].pt.l=0b10000111;
-        ifs[i].pt.l=3;
-        ifs[i].pt.d[0]='L';ifs[i].pt.d[1]='e';ifs[i].pt.d[2]='l';ifs[i].pt.d[3]='\0';
+        ifs[i].pt.f=0b00000100;
+        ifs[i].pt.a=0b00001001;
+        memcpy(ifs[i].pt.d, sensor, strlen(sensor)+1);
+        ifs[i].pt.l=strlen(ifs[i].pt.d);
         ifs[i].pt.di=-13;
     }
   }
@@ -196,14 +204,20 @@ void loop(){
             }else{
               PCMSK1|=1<<(ifs[i].rep-14);
             }
+
+            Serial.print("Bit length: ");
             Serial.println(ifs[i].pr.di);
+            Serial.print("Flags: ");
             Serial.println(ifs[i].pr.f);
+            Serial.print("Address: ");
             Serial.println(ifs[i].pr.a);
+            Serial.print("Length: ");
             Serial.println(ifs[i].pr.l);
 
             ifs[i].pr.ds=0;
             ifs[i].pr.di=-1;
 
+            Serial.print("Data: ");
             Serial.println((char *)ifs[i].pr.d);
             Serial.println("___________________________________");
 
@@ -220,12 +234,14 @@ void loop(){
       ifs[i].pr.l=0;
       ifs[i].pr.d[0]=0;
     }
+    
   }
     for(int i=0; i<1; i++){
+
       if(millis()-perc>=1000){
-        perc=millis();
-        ifs[i].pt.time=micros();
-        ifs[i].pt.ds=1;
-      }
+      perc=millis();
+      ifs[i].pt.time=micros();
+      ifs[i].pt.ds=1;
+    }
     }
 }
