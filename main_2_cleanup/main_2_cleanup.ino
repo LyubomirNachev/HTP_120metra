@@ -4,7 +4,7 @@ typedef struct pack{
   uint8_t f, a, l, ds; // flags, address, length
   int16_t di; // data index
   unsigned long time;
-  uint8_t d[32]; // data
+  uint8_t d[16]; // data
 } pack;
 
 typedef struct ifst{
@@ -117,7 +117,7 @@ ISR(PCINT2_vect){
     if((ics2>>i)&1){
      // Serial.print("updated pin "); Serial.println(i);
       
-     for(int j=0;j<1;j++){ 
+     for(int j=0;j<2;j++){ 
         if(ifs[j].rep==i){
           //Serial.print(" pin matched "); Serial.print(i);Serial.print(" ");Serial.println(ifs[j].synci);
           if(ifs[j].synci>=6){
@@ -135,9 +135,9 @@ ISR(PCINT2_vect){
 #define REED 11
 void setup(){
   pinMode(REED, INPUT_PULLUP);
-  rt[0]=0b00001001;
+  rt[0]=0b00001010;
   initif(1, 2, 3);
-  //initif(2, 6, 7);
+  initif(2, 4, 5);
   Serial.begin(9600);
 }
 
@@ -146,7 +146,7 @@ void loop(){
   char *sensor="Data";
 
   static unsigned long perc=0;
-  for(int i=0; i<1; i++){
+  for(int i=0; i<2; i++){
     if(ifs[i].pt.ds){
       if(micros()-ifs[i].pt.time>=(BITL/2)){
         ifs[i].pt.time=micros();
@@ -165,12 +165,12 @@ void loop(){
             digitalWrite(ifs[i].trp, (ifs[i].pt.d[((ifs[i].pt.di)/2-24)/8]>>(7-((ifs[i].pt.di)/2-24)%8))&1);
             if(((ifs[i].pt.di)/2-24)%8==7 && (!ifs[i].pt.d[((ifs[i].pt.di)/2-24)/8])){
               ifs[i].pt.ds=0;
-              break;
+              //continue;
             }
         }
         ifs[i].pt.di++;
       }
-    }else{
+    }else if(i==0){
         ifs[i].pt.f=0b00000100;
         ifs[i].pt.a=0b00001001;
         memcpy(ifs[i].pt.d, sensor, strlen(sensor)+1);
@@ -205,21 +205,10 @@ void loop(){
               PCMSK1|=1<<(ifs[i].rep-14);
             }
 
-            Serial.print("Bit length: ");
-            Serial.println(ifs[i].pr.di);
-            Serial.print("Flags: ");
-            Serial.println(ifs[i].pr.f);
-            Serial.print("Address: ");
-            Serial.println(ifs[i].pr.a);
-            Serial.print("Length: ");
-            Serial.println(ifs[i].pr.l);
+
 
             ifs[i].pr.ds=0;
             ifs[i].pr.di=-1;
-
-            Serial.print("Data: ");
-            Serial.println((char *)ifs[i].pr.d);
-            Serial.println("___________________________________");
 
             break;
           }
@@ -228,6 +217,39 @@ void loop(){
         ifs[i].pr.di++;
      }
     }else{
+      // Serial.print(da);
+      // Serial.println(ifs[i].pr.a);
+      // Serial.println(ifs[i].pr.a&(0b11111000));
+      if(ifs[i].pr.a!=0){
+      if( (ifs[i].pr.a&(0b11111000))==da){
+            Serial.print("Bit length: ");
+            Serial.println(ifs[i].pr.di);
+            Serial.print("Flags: ");
+            Serial.println(ifs[i].pr.f);
+            Serial.print("Address: ");
+            Serial.println(ifs[i].pr.a);
+            Serial.print("Length: ");
+            Serial.println(ifs[i].pr.l);
+            Serial.print("Data: ");
+            Serial.println((char *)ifs[i].pr.d);
+            Serial.println("___________________________________");
+      }else{
+        for(int j=0;j<32;j++){
+          if(!rt[j]) break;
+          if((ifs[i].pr.a&(0b11111000))==(rt[j]&(0b11111000))){
+                    ifs[(rt[j]&0b111)-1].pt.f=ifs[i].pr.f;
+                    ifs[(rt[j]&0b111)-1].pt.a=ifs[i].pr.a;
+                               
+                    memcpy(ifs[(rt[j]&0b111)-1].pt.d, ifs[i].pr.d, ifs[i].pr.l+1);
+                                                    Serial.println((char *)ifs[(rt[j]&0b111)-1].pt.d);
+                    ifs[(rt[j]&0b111)-1].pt.l=ifs[i].pr.l+1;
+                    ifs[(rt[j]&0b111)-1].pt.di=-13;
+                    ifs[i].pt.ds=1;
+          }
+        }
+        Serial.println("Forward");
+      }
+      }
       ifs[i].pr.di=-1;
       ifs[i].pr.f=0;
       ifs[i].pr.a=0;
@@ -236,8 +258,7 @@ void loop(){
     }
     
   }
-    for(int i=0; i<1; i++){
-
+    for(int i=0; i<2; i++){
       if(millis()-perc>=1000){
       perc=millis();
       ifs[i].pt.time=micros();
