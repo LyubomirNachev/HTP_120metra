@@ -16,14 +16,14 @@ typedef struct ifst{
 
 ifst ifs[7]={{0}};
 
-uint8_t rt[32]={0};
-
 #define BITL 1000
 
 #define PER 1000
 
 int initif(uint8_t in, uint8_t trp, uint8_t rep){
+
   if(in<1 || in>7) return 1;
+
   if(trp<2 || rep<2 || trp>19 || rep>19) return 1;
 
   for(int i=0;i<7;i++){
@@ -122,39 +122,20 @@ ISR(PCINT2_vect){
           ifs[j].synci=0;
           PCMSK2&=~(uint8_t)(1<<i);
           ifs[j].pr.ds=1;
-        
+          Serial.print("  end sync ");Serial.println("ne be majka ti majka tiiii");
           ifs[j].synci++;
         }
       }
     }
   }
 }
-
-#define REED 11
 void setup(){
-  pinMode(REED, INPUT_PULLUP);
-  rt[0]=0b00001001;
   initif(1, 2, 3);
   //initif(2, 6, 7);
   Serial.begin(9600);
 }
 
-void stoprcv(uint8_t i){
-                if(ifs[i].rep<=7){
-                PCMSK2|=1<<ifs[i].rep;
-              }else if(ifs[i].rep<=13){
-                PCMSK0|=1<<(ifs[i].rep-8);
-              }else{
-                PCMSK1|=1<<(ifs[i].rep-14);
-              }
-              ifs[i].pr.ds=0;
-              ifs[i].pr.di=-1;
-}
-
 void loop(){
-  //char sensor[2];sensor[0] = digitalRead(REED) + '0';sensor[1]='\0';
-  char *sensor="Data";
-
   static unsigned long perc=0;
   for(int i=0; i<1; i++){
     if(ifs[i].pt.ds){
@@ -181,11 +162,11 @@ void loop(){
         ifs[i].pt.di++;
       }
     }else{
-
-        ifs[i].pt.f=0b00000001;
-        ifs[i].pt.a=0b00001001;
-        memcpy(ifs[i].pt.d, sensor, strlen(sensor)+1);
-        ifs[i].pt.l=strlen(ifs[i].pt.d);
+        ifs[i].pt.f=0b01101101;
+        ifs[i].pt.a=0b01010101;
+        //ifs[i].pt.l=0b10000111;
+        ifs[i].pt.l=3;
+        ifs[i].pt.d[0]='L';ifs[i].pt.d[1]='e';ifs[i].pt.d[2]='l';ifs[i].pt.d[3]='\0';
         ifs[i].pt.di=-13;
     }
   }
@@ -200,112 +181,39 @@ void loop(){
       //Serial.println(ifs[i].pr.di);
         if(ifs[i].pr.di<8){
           ifs[i].pr.f|=digitalRead(ifs[i].rep)<<(7-ifs[i].pr.di);
-        }else switch(ifs[i].pr.f){
-          case 1:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.a|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else{
-            stoprcv(i);
-            goto exit;
-          }
-          break;
-          case 2:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.l|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else{
-            if(ifs[i].pr.di-16>=(ifs[i].pr.l+1)*8 || ifs[i].pr.di-16>=32*8){
-              stoprcv(i);
-              goto exit;
+        }
+        else if(ifs[i].pr.di<16)
+          ifs[i].pr.a|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
+        else if(ifs[i].pr.di<24)
+          ifs[i].pr.l|=digitalRead(ifs[i].rep)<<(23-ifs[i].pr.di);
+        else{
+          if(ifs[i].pr.di-24>=(ifs[i].pr.l+1)*8 || ifs[i].pr.di-24>=32*8){
+                      
+            if(ifs[i].rep<=7){
+              PCMSK2|=1<<ifs[i].rep;
+            }else if(ifs[i].rep<=13){
+              PCMSK0|=1<<(ifs[i].rep-8);
+            }else{
+              PCMSK1|=1<<(ifs[i].rep-14);
             }
-            ifs[i].pr.d[(ifs[i].pr.di-16)/8]|=digitalRead(ifs[i].rep)<<(7-(ifs[i].pr.di-16)%8);
-          }
-          break;
-          case 3:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.l|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else{
-            if(ifs[i].pr.di-16>=(ifs[i].pr.l+1)*8 || ifs[i].pr.di-16>=32*8){
-              stoprcv(i);
-              goto exit;
-            }
-            ifs[i].pr.d[(ifs[i].pr.di-16)/8]|=digitalRead(ifs[i].rep)<<(7-(ifs[i].pr.di-16)%8);
-          }
-          break;
-          case 4:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.a|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else if(ifs[i].pr.di<24)
-            ifs[i].pr.l|=digitalRead(ifs[i].rep)<<(23-ifs[i].pr.di);
-          else{
-            if(ifs[i].pr.di-24>=(ifs[i].pr.l+1)*8 || ifs[i].pr.di-24>=32*8){
-                        
+            Serial.println(ifs[i].pr.di);
+            Serial.println(ifs[i].pr.f);
+            Serial.println(ifs[i].pr.a);
+            Serial.println(ifs[i].pr.l);
 
-              Serial.print("Bit length: ");
-              Serial.println(ifs[i].pr.di);
-              Serial.print("Flags: ");
-              Serial.println(ifs[i].pr.f);
-              Serial.print("Address: ");
-              Serial.println(ifs[i].pr.a);
-              Serial.print("Length: ");
-              Serial.println(ifs[i].pr.l);
+            ifs[i].pr.ds=0;
+            ifs[i].pr.di=-1;
 
-              stoprcv(i);
-              
-              Serial.print("Data: ");
-              Serial.println((char *)ifs[i].pr.d);
-              Serial.println("___________________________________");
+            Serial.println((char *)ifs[i].pr.d);
+            Serial.println("___________________________________");
 
-              goto exit;
-            }
-            ifs[i].pr.d[(ifs[i].pr.di-24)/8]|=digitalRead(ifs[i].rep)<<(7-(ifs[i].pr.di-24)%8);
+            break;
           }
-          break;
-          case 5:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.a|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else{
-            stoprcv(i);
-            goto exit;
-          }
-          break;
-          case 6:
-          if(ifs[i].pr.di<16)
-            ifs[i].pr.l|=digitalRead(ifs[i].rep)<<(15-ifs[i].pr.di);
-          else{
-            if(ifs[i].pr.di-16>=(ifs[i].pr.l+1)*8 || ifs[i].pr.di-16>=32*8){
-              stoprcv(i);
-              goto exit;
-            }
-            ifs[i].pr.d[(ifs[i].pr.di-16)/8]|=digitalRead(ifs[i].rep)<<(7-(ifs[i].pr.di-16)%8);
-          }
-          break;
-
+          ifs[i].pr.d[(ifs[i].pr.di-24)/8]|=digitalRead(ifs[i].rep)<<(7-(ifs[i].pr.di-24)%8);
         }
         ifs[i].pr.di++;
      }
     }else{
-      switch(ifs[i].pr.f){
-        case 1:
-          Serial.println("Add Route to table");
-
-        break;
-        case 2:
-          Serial.println("Add it to your table and send the new route");
-        break;
-        case 3:
-          Serial.println("Remove the route and send the removed data to others")
-        break;
-        case 4:
-          Serial.println("Forward the data unless it's for me");
-        break;
-        case 5:
-          Serial.println("Syshto si ebi maikata");
-        break;
-        case 6:
-          Serial.println("Ebi si maikata");
-        break;
-      }
-
       ifs[i].pr.di=-1;
       ifs[i].pr.f=0;
       ifs[i].pr.a=0;
@@ -313,13 +221,11 @@ void loop(){
       ifs[i].pr.d[0]=0;
     }
   }
-  exit:
     for(int i=0; i<1; i++){
       if(millis()-perc>=1000){
         perc=millis();
         ifs[i].pt.time=micros();
         ifs[i].pt.ds=1;
-    }
+      }
     }
 }
-
