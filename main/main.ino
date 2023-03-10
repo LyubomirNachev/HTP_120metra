@@ -148,7 +148,7 @@ void setup(){
   pinMode(REED, INPUT_PULLUP);
   rt[0]=0b00001001;
   initif(1, 2, 3);
-  //initif(2, 6, 7);
+  initif(2, 6, 7);
   Serial.begin(9600);
 }
 
@@ -241,7 +241,7 @@ void loop(){
     
   }
   
-    for(int i=0; i<1; i++){
+    for(int i=0; i<2; i++){
       if(millis()-perc>=1000){
         perc=millis();
         ifs[i].pt.time=micros();

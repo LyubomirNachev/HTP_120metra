@@ -140,12 +140,12 @@ void setup(){
   initif(2, 4, 5);
   Serial.begin(9600);
 }
-
+unsigned long perc=0;
 void loop(){
   //char sensor[2];sensor[0] = digitalRead(REED) + '0';sensor[1]='\0';
   char *sensor="Data";
 
-  static unsigned long perc=0;
+
   for(int i=0; i<2; i++){
     if(ifs[i].pt.ds){
       if(micros()-ifs[i].pt.time>=(BITL/2)){
@@ -240,11 +240,15 @@ void loop(){
                     ifs[(rt[j]&0b111)-1].pt.f=ifs[i].pr.f;
                     ifs[(rt[j]&0b111)-1].pt.a=ifs[i].pr.a;
                                
-                    memcpy(ifs[(rt[j]&0b111)-1].pt.d, ifs[i].pr.d, ifs[i].pr.l+1);
+                    memcpy(ifs[(rt[j]&0b111)-1].pt.d, ifs[i].pr.d, 5);
+                                        //memcpy(ifs[(rt[j]&0b111)-1].pt.d, "KURWA", 6);
+
                                                     Serial.println((char *)ifs[(rt[j]&0b111)-1].pt.d);
-                    ifs[(rt[j]&0b111)-1].pt.l=ifs[i].pr.l+1;
+                    ifs[(rt[j]&0b111)-1].pt.l=4; // ifs[i].pr.l+1
                     ifs[(rt[j]&0b111)-1].pt.di=-13;
-                    ifs[i].pt.ds=1;
+                            ifs[(rt[j]&0b111)-1].pt.time=micros();
+
+                    ifs[(rt[j]&0b111)-1].pt.ds=1;
           }
         }
         Serial.println("Forward");
@@ -258,11 +262,11 @@ void loop(){
     }
     
   }
-    for(int i=0; i<2; i++){
-      if(millis()-perc>=1000){
-      perc=millis();
-      ifs[i].pt.time=micros();
-      ifs[i].pt.ds=1;
-    }
+    if(millis()-perc>=1000){
+      for(int i=0; i<1; i++){
+        perc=millis();
+        ifs[i].pt.time=micros();
+        ifs[i].pt.ds=1;
+      }
     }
 }
