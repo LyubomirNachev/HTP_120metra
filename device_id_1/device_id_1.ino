@@ -1,4 +1,4 @@
-uint8_t da=0<<3; // device address
+uint8_t da=1<<3; // device address
 
 typedef struct pack{
   uint8_t f, a, l, ds; // flags, address, length
@@ -135,7 +135,7 @@ ISR(PCINT2_vect){
 #define REED 11
 void setup(){
   pinMode(REED, INPUT_PULLUP);
-  rt[0]=0b00001010;
+  rt[0]=0b00000010;
   initif(1, 2, 3);
   initif(2, 4, 5);
   Serial.begin(9600);
@@ -270,11 +270,11 @@ void loop(){
     }
     
   }
-    if(millis()-perc>=PER){
-      for(int i=0; i<1; i++){
-        perc=millis();
-        ifs[i].pt.time=micros();
-        ifs[i].pt.ds=1;
-      }
-    }
+    // if(millis()-perc>=PER){
+    //   for(int i=0; i<1; i++){
+    //     perc=millis();
+    //     ifs[i].pt.time=micros();
+    //     ifs[i].pt.ds=1;
+    //   }
+    // }
 }

@@ -53,8 +53,8 @@ int initif(uint8_t in, uint8_t trp, uint8_t rep){
   return 0;
 }
 
-volatile uint8_t ios0, ios1, ios2; // interrupt old state
-volatile uint8_t ics0, ics1, ics2; // interrupt current state
+volatile uint8_t ios0, ios1, ios2=0; // interrupt old state
+volatile uint8_t ics0, ics1, ics2=0; // interrupt current state
 
 ISR(PCINT0_vect){
   ics0=ios0^(PINB&PCMSK0);
@@ -110,11 +110,8 @@ ISR(PCINT1_vect){
 ISR(PCINT2_vect){
   ics2=(ios2^(PIND&PCMSK2))&PIND;
   ios2=(PIND&PCMSK2);
-  for(int i=0;i<8;i++){ 
-    //Serial.print("pin "); Serial.println(i);
-   // Serial.print("pin on IF1 "); Serial.println(ifs[0].rep);
-
-    if((ics2>>i)&1){
+  for(int i=0;i<8;i++){ //pin check
+    if((ics2>>i)&1){ 
      // Serial.print("updated pin "); Serial.println(i);
       
      for(int j=0;j<2;j++){ 
@@ -135,9 +132,9 @@ ISR(PCINT2_vect){
 #define REED 11
 void setup(){
   pinMode(REED, INPUT_PULLUP);
-  rt[0]=0b00001010;
+  rt[0]=0b00000000;
   initif(1, 2, 3);
-  initif(2, 4, 5);
+  //initif(2, 4, 5);
   Serial.begin(9600);
 }
 unsigned long perc=0;
@@ -198,9 +195,7 @@ void loop(){
           if(ifs[i].pr.di-24>=(ifs[i].pr.l+1)*8 || ifs[i].pr.di-24>=32*8){
                       
             if(ifs[i].rep<=7){
-              PCMSK2|=1<<ifs[i].rep;
-            }else if(ifs[i].rep<=13){
-              PCMSK0|=1<<(ifs[i].rep-8);
+              PCMSK2|=1<<ifs[i].rep;       PCMSK0|=1<<(ifs[i].rep-8);
             }else{
               PCMSK1|=1<<(ifs[i].rep-14);
             }
@@ -208,7 +203,7 @@ void loop(){
 
 
             ifs[i].pr.ds=0;
-            ifs[i].pr.di=-1;
+            //ifs[i].pr.di=-1;
 
             break;
           }
@@ -221,46 +216,53 @@ void loop(){
       // Serial.println(ifs[i].pr.a);
       // Serial.println(ifs[i].pr.a&(0b11111000));
       if(ifs[i].pr.a!=0){
-      if( (ifs[i].pr.a&(0b11111000))==da){
-            Serial.print("Bit length: ");
-            Serial.println(ifs[i].pr.di);
-            Serial.print("Flags: ");
-            Serial.println(ifs[i].pr.f);
-            Serial.print("Address: ");
-            Serial.println(ifs[i].pr.a);
-            Serial.print("Length: ");
-            Serial.println(ifs[i].pr.l);
-            Serial.print("Data: ");
-            Serial.println((char *)ifs[i].pr.d);
+        if( (ifs[i].pr.a&(0b11111000))==da){
+              Serial.print("Bit length: ");
+              Serial.println(ifs[i].pr.di);
+                          ifs[i].pr.di=-1;
+              Serial.print("Flags: ");
+              Serial.println(ifs[i].pr.f);
+              Serial.print("Address: ");
+              Serial.println(ifs[i].pr.a);
+              Serial.print("Length: ");
+              Serial.println(ifs[i].pr.l);
+              Serial.print("Data: ");
+              Serial.println((char *)ifs[i].pr.d);
+                                          for(int k=0;k<=ifs[i].pr.l;k++){
+                                          Serial.print((char)ifs[i].pr.d[k]);
+                                          Serial.print(ifs[i].pr.d[k], BIN);
+                                          Serial.print(" ");
+                                          }
+                                      Serial.println();
 
 
-            Serial.println("___________________________________");
-      }else{
-        for(int j=0;j<32;j++){
-          if(!rt[j]) break;
-          if((ifs[i].pr.a&(0b11111000))==(rt[j]&(0b11111000))){
-                    ifs[(rt[j]&0b111)-1].pt.f=ifs[i].pr.f;
-                    ifs[(rt[j]&0b111)-1].pt.a=ifs[i].pr.a;
-                               
-                    memcpy(ifs[(rt[j]&0b111)-1].pt.d, ifs[i].pr.d, 5);
-                                        //memcpy(ifs[(rt[j]&0b111)-1].pt.d, "KURWA", 6);
-                    ifs[(rt[j]&0b111)-1].pt.l=4; // ifs[i].pr.l+1
-                                      Serial.println((char *)ifs[(rt[j]&0b111)-1].pt.d);
-                                       for(int k=0;k<=ifs[(rt[j]&0b111)-1].pt.l;k++){
-                                        Serial.print((char)ifs[(rt[j]&0b111)-1].pt.d[k]);
-                                        Serial.print(ifs[(rt[j]&0b111)-1].pt.d[k], BIN);
-                                        Serial.print(" ");
-                                        }
-                                     Serial.println();
+              Serial.println("___________________________________");
+        }else{
+          for(int j=0;j<32;j++){
+            if(!rt[j]) break;
+            if((ifs[i].pr.a&(0b11111000))==(rt[j]&(0b11111000))){
+                      ifs[(rt[j]&0b111)-1].pt.f=ifs[i].pr.f;
+                      ifs[(rt[j]&0b111)-1].pt.a=ifs[i].pr.a;
+                                
+                      memcpy(ifs[(rt[j]&0b111)-1].pt.d, ifs[i].pr.d, 5);
+                                          //memcpy(ifs[(rt[j]&0b111)-1].pt.d, "KURWA", 6);
+                      ifs[(rt[j]&0b111)-1].pt.l=4; // ifs[i].pr.l+1
+                                        Serial.println((char *)ifs[(rt[j]&0b111)-1].pt.d);
+                                        for(int k=0;k<=ifs[(rt[j]&0b111)-1].pt.l;k++){
+                                          Serial.print((char)ifs[(rt[j]&0b111)-1].pt.d[k]);
+                                          Serial.print(ifs[(rt[j]&0b111)-1].pt.d[k], BIN);
+                                          Serial.print(" ");
+                                          }
+                                      Serial.println();
 
-                    ifs[(rt[j]&0b111)-1].pt.di=-13;
-                            ifs[(rt[j]&0b111)-1].pt.time=micros();
+                      ifs[(rt[j]&0b111)-1].pt.di=-13;
+                              ifs[(rt[j]&0b111)-1].pt.time=micros();
 
-                    ifs[(rt[j]&0b111)-1].pt.ds=1;
+                      ifs[(rt[j]&0b111)-1].pt.ds=1;
+            }
           }
+          Serial.println("Forward");
         }
-        Serial.println("Forward");
-      }
       }
       ifs[i].pr.di=-1;
       ifs[i].pr.f=0;
@@ -270,11 +272,11 @@ void loop(){
     }
     
   }
-    if(millis()-perc>=PER){
-      for(int i=0; i<1; i++){
-        perc=millis();
-        ifs[i].pt.time=micros();
-        ifs[i].pt.ds=1;
-      }
-    }
+    // if(millis()-perc>=PER){
+    //   for(int i=0; i<1; i++){
+    //     perc=millis();
+    //     ifs[i].pt.time=micros();
+    //     ifs[i].pt.ds=1;
+    //   }
+    // }
 }

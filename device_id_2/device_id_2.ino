@@ -1,4 +1,4 @@
-uint8_t da=0<<3; // device address
+uint8_t da=2<<3; // device address
 
 typedef struct pack{
   uint8_t f, a, l, ds; // flags, address, length
@@ -20,7 +20,7 @@ uint8_t rt[32]={0};
 
 #define BITL 1000
 
-#define PER 1000
+#define PER 1500
 
 int initif(uint8_t in, uint8_t trp, uint8_t rep){
 
@@ -32,8 +32,7 @@ int initif(uint8_t in, uint8_t trp, uint8_t rep){
     if(ifs[i].trp==trp || ifs[i].rep==rep || ifs[i].trp==rep || ifs[i].rep==trp) return 1;
   }
 
-  ifs[in-1].ia=da|in;
-  ifs[in-1].trp=trp;
+  ifs[in-1].ia=da|in; ifs[in-1].trp=trp;
   ifs[in-1].rep=rep;
 
   pinMode(trp, OUTPUT);
@@ -135,9 +134,9 @@ ISR(PCINT2_vect){
 #define REED 11
 void setup(){
   pinMode(REED, INPUT_PULLUP);
-  rt[0]=0b00001010;
+  rt[0]=0b00000001;
   initif(1, 2, 3);
-  initif(2, 4, 5);
+  //initif(2, 4, 5);
   Serial.begin(9600);
 }
 unsigned long perc=0;
@@ -145,7 +144,7 @@ void loop(){
   //char sensor[2];sensor[0] = digitalRead(REED) + '0';sensor[1]='\0';
   char *sensor="Data";
 
-
+//transmit
   for(int i=0; i<2; i++){
     if(ifs[i].pt.ds){
       if(micros()-ifs[i].pt.time>=(BITL/2)){
@@ -172,12 +171,14 @@ void loop(){
       }
     }else if(i==0){
         ifs[i].pt.f=0b00000100;
-        ifs[i].pt.a=0b00001001;
+        ifs[i].pt.a=0b00000001;
         memcpy(ifs[i].pt.d, sensor, strlen(sensor)+1);
         ifs[i].pt.l=strlen(ifs[i].pt.d);
         ifs[i].pt.di=-13;
     }
   }
+
+  //receive 
   for(int i=0; i<1; i++){
     if(ifs[i].pr.ds){
      if(ifs[i].pr.di==-1){
