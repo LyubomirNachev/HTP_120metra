@@ -1,4 +1,4 @@
-uint8_t da=1<<3; // device address
+uint8_t da=3<<3; // device address
 
 typedef struct pack{
   uint8_t f, a, l, ds; // flags, address, length
@@ -142,18 +142,17 @@ void setup(){
   pinMode(REED, INPUT_PULLUP);
   rt[0]=0b00000001;
   initif(1, 2, 3);
-  initif(2, 4, 5);
-  initif(3, 6, 7);
+  //initif(2, 4, 5);
   Serial.begin(9600);
 }
 unsigned long perc=0;
 unsigned long hperc=0;
 void loop(){
   //char sensor[2];sensor[0] = digitalRead(REED) + '0';sensor[1]='\0';
-  char *sensor="Cigr";
+  char *sensor="Zoom";
 
 //transmit
-  for(int i=0; i<3; i++){
+  for(int i=0; i<2; i++){
     if(ifs[i].pt[ifs[i].qs].ds){
     //if(ifs[i].ql){
       if(micros()-ifs[i].pt[ifs[i].qs].time>=(BITL/2)){
@@ -192,7 +191,7 @@ void loop(){
   }
 
   //receive 
-  for(int i=0; i<3; i++){
+  for(int i=0; i<1; i++){
     if(ifs[i].pr.ds){
      if(ifs[i].pr.di==-1){
       ifs[i].pr.time=micros();
@@ -304,7 +303,7 @@ void loop(){
           ifs[i].pt[(ifs[i].qs+ifs[i].ql)%QL].di=-13;
         }
       }
-      for(int i=0; i<3; i++){
+      for(int i=0; i<1; i++){
         hperc=millis();
         ifs[i].pt[(ifs[i].qs+ifs[i].ql)%QL].time=micros();
         ifs[i].pt[(ifs[i].qs+ifs[i].ql)%QL].ds=1;
