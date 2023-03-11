@@ -8,10 +8,12 @@ typedef struct pack{
 } pack;
 
 typedef struct ifst{
-  uint8_t ia, trp, rep, synci; // interface address, transmit pin, receive pin
+  uint8_t ia, trp, rep, synci, down; // interface address, transmit pin, receive pin
   unsigned long sync[6]; unsigned long syncavrg;
+  unsigned long timedown;
+  uint8_t qs, ql;
   pack pr; // packet receive
-  pack pt; // packet transmit
+  pack pt[]; // packet transmit
 } ifst;
 
 ifst ifs[7]={{0}};
@@ -19,6 +21,8 @@ ifst ifs[7]={{0}};
 uint8_t rt[32]={0};
 
 #define BITL 1000
+
+#define HPER 500
 
 #define PER 1500
 
@@ -140,6 +144,7 @@ void setup(){
   Serial.begin(9600);
 }
 unsigned long perc=0;
+unsigned long hperc=0;
 void loop(){
   //char sensor[2];sensor[0] = digitalRead(REED) + '0';sensor[1]='\0';
   char *sensor="Data";
@@ -170,10 +175,12 @@ void loop(){
         ifs[i].pt.di++;
       }
     }else if(i==0){
-        ifs[i].pt.f=0b00000100;
-        ifs[i].pt.a=0b00000001;
-        memcpy(ifs[i].pt.d, sensor, strlen(sensor)+1);
-        ifs[i].pt.l=strlen(ifs[i].pt.d);
+        ifs[i].pt.f=0b00000000;
+        ifs[i].pt.a=0b00000000;
+        //memcpy(ifs[i].pt.d, sensor, strlen(sensor)+1);
+        ifs[i].pt.d[0]=0;
+        //ifs[i].pt.l=strlen(ifs[i].pt.d);
+        ifs[i].pt.l=0;
         ifs[i].pt.di=-13;
     }
   }
@@ -221,7 +228,12 @@ void loop(){
       // Serial.print(da);
       // Serial.println(ifs[i].pr.a);
       // Serial.println(ifs[i].pr.a&(0b11111000));
+
+      if(!ifs[i].pr.l) continue;
+
       if(ifs[i].pr.a!=0){
+        ifs[i].timedown=micros();
+        ifs[i].down=0;
       if( (ifs[i].pr.a&(0b11111000))==da){
             Serial.print("Bit length: ");
             Serial.println(ifs[i].pr.di);
@@ -240,6 +252,8 @@ void loop(){
         for(int j=0;j<32;j++){
           if(!rt[j]) break;
           if((ifs[i].pr.a&(0b11111000))==(rt[j]&(0b11111000))){
+                    if(ifs[(rt[j]&0b111)-1].down) continue;
+
                     ifs[(rt[j]&0b111)-1].pt.f=ifs[i].pr.f;
                     ifs[(rt[j]&0b111)-1].pt.a=ifs[i].pr.a;
                                
@@ -269,11 +283,23 @@ void loop(){
       ifs[i].pr.l=0;
       ifs[i].pr.d[0]=0;
     }
-    
+    if(micros()-ifs[i].timedown>=(PER/HPER)-1) ifs[i].down=1;
   }
-    if(millis()-perc>=PER){
+    if(millis()-hperc>=HPER){
+      if(millis()-perc>=PER){
+        for(int i=0; i<1; i++){
+          perc=millis();
+          ifs[i].pt.f=0b00000000;
+          ifs[i].pt.a=0b00000001;
+          memcpy(ifs[i].pt.d, sensor, strlen(sensor)+1);
+          ifs[i].pt.l=strlen(ifs[i].pt.d);
+          ifs[i].pt.l=0;
+          ifs[i].pt.di=-13;
+
+        }
+      }
       for(int i=0; i<1; i++){
-        perc=millis();
+        hperc=millis();
         ifs[i].pt.time=micros();
         ifs[i].pt.ds=1;
       }
