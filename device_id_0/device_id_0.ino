@@ -228,12 +228,12 @@ void loop(){
               Serial.println(ifs[i].pr.l);
               Serial.print("Data: ");
               Serial.println((char *)ifs[i].pr.d);
-                                          for(int k=0;k<=ifs[i].pr.l;k++){
-                                          Serial.print((char)ifs[i].pr.d[k]);
-                                          Serial.print(ifs[i].pr.d[k], BIN);
-                                          Serial.print(" ");
-                                          }
-                                      Serial.println();
+                                      //     for(int k=0;k<=ifs[i].pr.l;k++){
+                                      //     Serial.print((char)ifs[i].pr.d[k]);
+                                      //     Serial.print(ifs[i].pr.d[k], BIN);
+                                      //     Serial.print(" ");
+                                      //     }
+                                      //Serial.println();
 
 
               Serial.println("___________________________________");
